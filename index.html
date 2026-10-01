@@ -11135,8 +11135,8 @@
     }
     mctx.clearRect(0, 0, W, H);
     mctx.drawImage(cache, 0, 0);
-    if (cur) drawStroke(mctx, cur, dpr);
-    if (painting && st.tool === 'erase' && eraserPos) {
+    if (cur && !held) drawStroke(mctx, cur, dpr);
+    if (painting && !held && st.tool === 'erase' && eraserPos) {
       mctx.save(); mctx.setTransform(1, 0, 0, 1, 0, 0);
       mctx.globalAlpha = 1; mctx.strokeStyle = '#B89AB8'; mctx.lineWidth = 2 * dpr;
       mctx.beginPath(); mctx.arc(eraserPos[0] * dpr, eraserPos[1] * dpr, 12 * dpr, 0, Math.PI * 2); mctx.stroke();
@@ -11210,7 +11210,10 @@
   // 編み図の移動・拡大のたびに描き直す（既存の描画処理の最後に付け足す）
   var origDraw = window.drawImage;
   if (typeof origDraw === 'function') {
-    window.drawImage = function () { var r = origDraw.apply(this, arguments); render(); return r; };
+    window.drawImage = function () {
+      if (frozenView) { scale = frozenView.s; offsetX = frozenView.x; offsetY = frozenView.y; } // 塗っている間は動かさない
+      var r = origDraw.apply(this, arguments); render(); return r;
+    };
   }
   window.addEventListener('resize', render);
 
@@ -11296,7 +11299,8 @@
 
   /* ---------- 塗る操作（指1本・ペン・マウス）。2本指は今までどおり拡大・移動 ---------- */
   var touchIds = {}, touchCount = 0;
-  var painting = false, pid = null, blockTouch = false, ignoreUntilUp = false, penStroke = false;
+  var painting = false, pid = null, blockTouch = false, ignoreUntilUp = false, penStroke = false, blockTimer = null, frozenView = null;
+  var held = false, holdTimer = null, strokeT0 = 0, startPt = null, lastPt = null, maxMove = 0;
 
   function toImg(e) { return [(e.clientX - offsetX) / scale, (e.clientY - offsetY) / scale]; }
   function addPoint(e) {
@@ -11337,10 +11341,31 @@
     var left = strokes.filter(function (s) { return !hit(s, q[0], q[1], tol); });
     if (left.length !== n) { strokes = left; ver++; }
   }
+  function release() {
+    if (!held) return;
+    held = false; clearTimeout(holdTimer);
+    if (painting && st.tool === 'erase' && lastPt) eraseAt(lastPt);
+    render();
+  }
+  // 2本目の指が触れた：様子見中・ごく短い塗りなら、ピンチとみなして取り消す。しっかり塗っていた線は残す
+  function endForPinch() {
+    var short = !penStroke && (held || (Date.now() - strokeT0 < 350 && maxMove < 12));
+    if (!short) { finish(); return; }
+    clearTimeout(holdTimer); held = false;
+    if (st.tool === 'erase' && eraseBefore) { strokes = eraseBefore; }
+    eraseBefore = null; eraserPos = null; cur = null; painting = false; pid = null; frozenView = null;
+    ver++; syncBtns(); render();
+  }
   function start(e) {
+    clearTimeout(blockTimer);
     painting = true; pid = e.pointerId; penStroke = e.pointerType === 'pen';
+    frozenView = { s: scale, x: offsetX, y: offsetY };   // 塗っている間は、編み図の位置と倍率を固定
+    strokeT0 = Date.now(); startPt = [e.clientX, e.clientY]; lastPt = e; maxMove = 0;
+    held = e.pointerType === 'touch';        // 指は、2本指ピンチかもしれないので、少し様子を見てから塗り始める
+    clearTimeout(holdTimer);
+    if (held) holdTimer = setTimeout(release, 120);
     if (st.tool === 'erase') {
-      eraseBefore = strokes.slice(); eraserPos = [e.clientX, e.clientY]; eraseAt(e); render(); return;
+      eraseBefore = strokes.slice(); eraserPos = [e.clientX, e.clientY]; if (!held) eraseAt(e); render(); return;
     }
     var k = st.tool === 'line' ? 'l' : (st.tool === 'rect' ? 'r' : 'p');
     cur = { k: k, c: st.color, a: st.alpha, w: st.width / scale, p: [] };
@@ -11356,19 +11381,21 @@
       var tiny = cur.k === 'r' && Math.abs(cur.p[1][0] - cur.p[0][0]) * scale < 3 && Math.abs(cur.p[1][1] - cur.p[0][1]) * scale < 3;
       if (!tiny) { var before = strokes.slice(); strokes.push(cur); commit(before); }
     }
-    cur = null; painting = false; pid = null;
+    cur = null; painting = false; pid = null; frozenView = null; held = false; clearTimeout(holdTimer);
     syncBtns(); render();
-    setTimeout(function () { blockTouch = false; }, 400);
+    clearTimeout(blockTimer);
+    blockTimer = setTimeout(function () { blockTouch = false; }, 1500); // 指・ペンが離れた時（touchend）にも解除される。念のための保険
   }
 
   window.addEventListener('pointerdown', function (e) {
     if (e.pointerType === 'touch') {
       if (!touchIds[e.pointerId]) { touchIds[e.pointerId] = 1; touchCount++; }
-      if (touchCount >= 2) { if (painting) finish(); blockTouch = false; ignoreUntilUp = true; }
+      if (touchCount >= 2) { if (painting) endForPinch(); blockTouch = false; ignoreUntilUp = true; }
     }
     if (ignoreUntilUp || painting) return;
     if (!shouldPaint(e)) return;
     start(e);
+    try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
     e.preventDefault(); e.stopPropagation();
     if (e.pointerType !== 'mouse') blockTouch = true;
   }, true);
@@ -11377,7 +11404,10 @@
     if (!painting || e.pointerId !== pid) return;
     var list = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
     if (!list.length) list = [e];
-    if (st.tool === 'erase') { for (var j = 0; j < list.length; j++) eraseAt(list[j]); eraserPos = [e.clientX, e.clientY]; }
+    lastPt = e;
+    maxMove = Math.max(maxMove, Math.hypot(e.clientX - startPt[0], e.clientY - startPt[1]));
+    if (held && maxMove > 6) release();       // 少し動いたら、1本指で塗っているとみなして、塗り始める
+    if (st.tool === 'erase') { if (!held) { for (var j = 0; j < list.length; j++) eraseAt(list[j]); } eraserPos = [e.clientX, e.clientY]; }
     else if (cur && cur.k !== 'p') setEnd(e);
     else for (var i = 0; i < list.length; i++) addPoint(list[i]);
     render();
@@ -11396,16 +11426,68 @@
 
   // 塗っている指の「画面の移動」「定規の移動」が一緒に動かないよう、タッチ操作を止める
   window.addEventListener('touchstart', function (e) {
-    if (blockTouch && painting && (penStroke || e.touches.length === 1)) { e.preventDefault(); e.stopPropagation(); }
+    if (blockTouch && (penStroke || e.touches.length === 1)) { e.preventDefault(); e.stopPropagation(); }
   }, { capture: true, passive: false });
   window.addEventListener('touchmove', function (e) {
-    if (blockTouch && painting && (penStroke || e.touches.length === 1)) { e.preventDefault(); e.stopPropagation(); }
+    if (blockTouch && (penStroke || e.touches.length === 1)) { e.preventDefault(); e.stopPropagation(); }
   }, { capture: true, passive: false });
   function tend(e) {
     if (blockTouch) { e.preventDefault(); e.stopPropagation(); if (e.touches.length === 0) blockTouch = false; }
   }
+  ['mousedown', 'mousemove', 'mouseup'].forEach(function (n) {
+    window.addEventListener(n, function (e) { if (painting || blockTouch) { e.stopPropagation(); } }, true);
+  });
   window.addEventListener('touchend', tend, { capture: true, passive: false });
   window.addEventListener('touchcancel', tend, { capture: true, passive: false });
+
+  /* ---------- マーカー中の2本指（マーカーにした時だけ）
+       ・定規の上の2本指：定規を動かす（大きさの変更はしない）
+       ・それ以外の2本指：拡大・縮小に加えて、編み図を動かす ---------- */
+  var prevMid = null, rulerGesture = null;
+  function midOf(ts) { return [(ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2]; }
+  function onRuler(el) { return !!(el && el.closest && el.closest('#ruler-handle')); }
+  function gestureKind(e) {
+    var a = e.touches[0], b = e.touches[1];
+    if (currentRulerTab === 'band') return (onRuler(e.target) || (onRuler(a.target) && onRuler(b.target))) ? 'band' : null;
+    if (currentRulerTab === 'circle') return (Math.hypot(a.clientX - cX, a.clientY - cY) <= cR + 16 && Math.hypot(b.clientX - cX, b.clientY - cY) <= cR + 16) ? 'circle' : null;
+    if (currentRulerTab === 'box') return (boxHitTest(a.clientX, a.clientY) !== null && boxHitTest(b.clientX, b.clientY) !== null) ? 'box' : null;
+    return null;
+  }
+  function moveRuler(kind, dx, dy) {
+    if (kind === 'band') {
+      var vVis = Math.max(44, rulerHeight * 0.1), hVis = Math.max(44, (rulerWidth / 100) * window.innerWidth * 0.1);
+      var hPct = (hVis / window.innerWidth) * 100;
+      rulerTop = Math.max(-(rulerHeight - vVis), Math.min(window.innerHeight - vVis, rulerTop + dy));
+      var lp = rulerLeft + (dx / window.innerWidth) * 100;
+      rulerLeft = Math.max(-(rulerWidth - hPct), Math.min(100 - hPct, lp));
+      applyRulerPos();
+    } else if (kind === 'circle') {
+      cX += dx; cY += dy; clampCircleCenter(); applyCircle();
+    } else if (kind === 'box') {
+      var mW = Math.min(bxHalfW * 0.8, Math.max(0, bxHalfW - 44)), mH = Math.min(bxHalfH * 0.8, Math.max(0, bxHalfH - 44));
+      bxX = Math.max(-mW, Math.min(window.innerWidth + mW, bxX + dx));
+      bxY = Math.max(-mH, Math.min(window.innerHeight + mH, bxY + dy));
+      applyBox();
+    }
+  }
+  window.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 2) { prevMid = midOf(e.touches); rulerGesture = (st.mode === 'marker') ? gestureKind(e) : null; }
+    else { prevMid = null; rulerGesture = null; }
+  }, { capture: true, passive: true });
+  window.addEventListener('touchmove', function (e) {
+    if (st.mode !== 'marker' || e.touches.length !== 2 || !prevMid) return;
+    var m = midOf(e.touches), dx = m[0] - prevMid[0], dy = m[1] - prevMid[1];
+    prevMid = m;
+    if (rulerGesture) {                       // 定規の上の2本指 → 定規を動かす（大きさの変更は止める）
+      e.preventDefault(); e.stopPropagation();
+      moveRuler(rulerGesture, dx, dy);
+    } else if (hasImg() && typeof lastPinchDist !== 'undefined' && lastPinchDist > 0) {
+      offsetX += dx; offsetY += dy;           // 編み図側のピンチ：移動も一緒に
+    }
+  }, { capture: true, passive: false });
+  function midEnd(e) { if (e.touches.length < 2) { prevMid = null; rulerGesture = null; } }
+  window.addEventListener('touchend', midEnd, { capture: true, passive: true });
+  window.addEventListener('touchcancel', midEnd, { capture: true, passive: true });
 
   /* ---------- 計測・目数ガイド・めじるしを使っている間は、マーカーを隠してオフにする ---------- */
   function busy() {
