@@ -11031,6 +11031,7 @@
   '.mk-tg.on{filter:none;opacity:1;background:#F1E6F1;border-color:#B89AB8;box-shadow:0 0 0 1.5px #B89AB8;}' +
   '#mk-note{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:240;max-width:calc(100vw - 32px);background:#F8F2F2;border:1.5px solid #E2D4E2;border-radius:14px;padding:8px 14px;font:700 11px "Zen Maru Gothic",sans-serif;color:#7A5C7A;letter-spacing:.04em;box-shadow:0 4px 14px rgba(120,90,120,.18);display:none;}' +
   '.mk-seg-b.tl{min-height:34px;font-size:10px;letter-spacing:0;white-space:nowrap;padding:4px 0;}' +
+  'body.mk-marker .ruler-edge,body.mk-marker .ruler-corner{pointer-events:none !important;}' +
   'body.mk-hide-ruler #ruler-overlay,body.mk-hide-ruler #circle-overlay,body.mk-hide-ruler #box-overlay{visibility:hidden !important;}';
   document.head.appendChild(css);
 
@@ -11225,6 +11226,7 @@
     $('mk-in-pen').classList.toggle('on', st.input === 'pen');
     $('mk-in-hand').classList.toggle('on', st.input === 'hand');
     $('mk-ruler-tg').classList.toggle('on', st.showRuler);
+    document.body.classList.toggle('mk-marker', st.mode === 'marker');
     document.body.classList.toggle('mk-hide-ruler', st.mode === 'marker' && !st.showRuler);
     var dotsEl = document.querySelectorAll('.mk-dot');
     for (var i = 0; i < dotsEl.length; i++) dotsEl[i].classList.toggle('on', dotsEl[i].getAttribute('data-c').toLowerCase() === st.color.toLowerCase());
@@ -11288,13 +11290,17 @@
     if (busy()) return false;
     if (window.findMejirushiPinHitAt && window.findMejirushiPinHitAt(e.clientX, e.clientY)) return false;
     if (pen) return true;                                           // ペンはマーカー専用：定規の端でも、塗る
-    if (t.closest('.ruler-edge,.ruler-corner')) return false;       // 指の時は、定規の端・角が優先
-    if (currentRulerTab === 'circle' && t.closest('#circle-canvas') && isOnCircleRim(e.clientX, e.clientY)) return false;
-    if (currentRulerTab === 'box' && t.closest('#box-canvas')) {
-      var h = boxHitTest(e.clientX, e.clientY);
-      if (h && h !== 'inside') return false;
-    }
     return true;
+  }
+
+  // 円定規の縁・四角定規の辺と角：マーカーにしている間は「大きさ変更」の入口にしない
+  if (typeof window.isOnCircleRim === 'function') {
+    var origRim = window.isOnCircleRim;
+    window.isOnCircleRim = function () { return st.mode === 'marker' ? false : origRim.apply(this, arguments); };
+  }
+  if (typeof window.boxHitTest === 'function') {
+    var origBoxHit = window.boxHitTest;
+    window.boxHitTest = function () { var h = origBoxHit.apply(this, arguments); return (st.mode === 'marker' && h) ? 'inside' : h; };
   }
 
   /* ---------- 塗る操作（指1本・ペン・マウス）。2本指は今までどおり拡大・移動 ---------- */
