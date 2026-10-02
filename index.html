@@ -11033,8 +11033,11 @@
   '.mk-btns button:disabled{opacity:.4;cursor:default;}' +
   '.mk-btns button.on{background:#F1E6F1;border-color:#B89AB8;}' +
   '#mk-ui .undo-redo-btn{width:34px;height:34px;font-size:16px;line-height:1;}' +
-  '.mk-tg{filter:grayscale(1);opacity:.55;}' +
-  '.mk-tg.on{filter:none;opacity:1;background:#F1E6F1;border-color:#B89AB8;box-shadow:0 0 0 1.5px #B89AB8;}' +
+  '.mk-tg .mk-ic{filter:grayscale(1);opacity:.55;}' +
+  '#mk-undo .action-tooltip{left:0;transform:none;}' +
+  '#mk-in-pen .action-tooltip,#mk-in-hand .action-tooltip{left:auto;right:0;transform:none;}' +
+  '.mk-tg.on .mk-ic{filter:none;opacity:1;}' +
+  '.mk-tg.on{background:#F1E6F1;border-color:#B89AB8;box-shadow:0 0 0 1.5px #B89AB8;}' +
   '#mk-note{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:240;max-width:calc(100vw - 32px);background:#F8F2F2;border:1.5px solid #E2D4E2;border-radius:14px;padding:8px 14px;font:700 11px "Zen Maru Gothic",sans-serif;color:#7A5C7A;letter-spacing:.04em;box-shadow:0 4px 14px rgba(120,90,120,.18);display:none;}' +
   '#mk-ui.cp #mk-bar{gap:6px;padding:7px 8px;border-radius:14px;}' +
   '#mk-ui.cp .mk-seg-b.tl{min-height:28px;}' +
@@ -11052,7 +11055,11 @@
   '#mk-pen-notice{position:fixed;inset:0;z-index:400;background:rgba(94,69,96,.28);display:flex;align-items:center;justify-content:center;padding:20px;font-family:"Zen Maru Gothic",sans-serif;}' +
   '.mk-pn-card{background:#FBF6FB;border:1.5px solid #E2D4E2;border-radius:20px;padding:20px 20px 16px;max-width:340px;box-shadow:0 10px 30px rgba(94,69,96,.25);text-align:center;}' +
   '.mk-pn-title{font-weight:700;font-size:15px;color:#5E4560;letter-spacing:.06em;margin-bottom:10px;}' +
-  '.mk-pn-body{font-size:13px;line-height:1.7;color:#7A5C7A;margin-bottom:16px;}' +
+  '.mk-pn-body{font-size:13px;line-height:1.8;color:#7A5C7A;margin-bottom:16px;}' +
+  '.mk-pn-body span{display:inline-block;}' +
+  '.mk-pn-lead{margin-bottom:10px;}' +
+  '.mk-pn-row{background:#F4E9F4;border-radius:12px;padding:8px 10px;margin-top:6px;line-height:1.6;}' +
+  '.mk-pn-row b{display:block;color:#5E4560;font-size:13px;letter-spacing:.04em;}' +
   '.mk-pn-ok{border:none;background:#E2D4E2;color:#5E4560;font:700 13px "Zen Maru Gothic",sans-serif;letter-spacing:.1em;padding:9px 34px;border-radius:999px;cursor:pointer;}' +
   '.mk-seg-b.tl{min-height:34px;font-size:10px;letter-spacing:0;white-space:nowrap;padding:4px 0;}' +
   'body.mk-marker .ruler-edge,body.mk-marker .ruler-corner{pointer-events:none !important;}' +
@@ -11091,12 +11098,12 @@
       '<div class="mk-row" id="mk-row-w"><span>太さ</span><div class="mk-seg" id="mk-wseg">' + wBtns + '</div></div>' +
       '<div class="mk-row" id="mk-row-a"><span>濃さ</span><div class="mk-seg" id="mk-aseg">' + aBtns + '</div></div>' +
       '<div class="undo-redo-row" style="gap:8px;">' +
-        '<button type="button" class="undo-redo-btn" id="mk-undo" title="戻る" aria-label="1つ前の状態に戻る" disabled>↺</button>' +
-        '<button type="button" class="undo-redo-btn" id="mk-redo" title="進む" aria-label="1つ先の状態に進む" disabled>↻</button>' +
-        '<button type="button" class="undo-redo-btn" id="mk-clear" title="一括削除" aria-label="蛍光ペンの塗りを一括削除">🗑️</button>' +
-        '<button type="button" class="undo-redo-btn mk-tg" id="mk-ruler-tg" aria-label="定規を表示">📏</button>' +
-        '<button type="button" class="undo-redo-btn mk-tg" id="mk-in-pen" aria-label="ペンモード">✏️</button>' +
-        '<button type="button" class="undo-redo-btn mk-tg" id="mk-in-hand" aria-label="指モード">👆</button>' +
+        '<button type="button" class="undo-redo-btn" id="mk-undo" aria-label="1つ前の状態に戻る" disabled>↺<span class="action-tooltip">1つ前に戻る</span></button>' +
+        '<button type="button" class="undo-redo-btn" id="mk-redo" aria-label="1つ先の状態に進む" disabled>↻<span class="action-tooltip">1つ先に進む</span></button>' +
+        '<button type="button" class="undo-redo-btn" id="mk-clear" aria-label="蛍光ペンの塗りを一括削除">🗑️<span class="action-tooltip">塗った内容を一括削除</span></button>' +
+        '<button type="button" class="undo-redo-btn mk-tg" id="mk-ruler-tg" aria-label="定規を表示"><span class="mk-ic">📏</span><span class="action-tooltip">定規の表示／非表示</span></button>' +
+        '<button type="button" class="undo-redo-btn mk-tg" id="mk-in-pen" aria-label="ペンモード"><span class="mk-ic">✏️</span><span class="action-tooltip">ペンモード：ペンで塗る</span></button>' +
+        '<button type="button" class="undo-redo-btn mk-tg" id="mk-in-hand" aria-label="指モード"><span class="mk-ic">👆</span><span class="action-tooltip">指モード：指でも塗る</span></button>' +
       '</div>' +
     '</div>' +
     '<div id="mk-pill">' +
@@ -11172,6 +11179,7 @@
   /* ---------- 保存と復元（編み図の画像ごと。保存キーは v2 専用で、一度決めたら変更しない） ---------- */
   var DKEY = 'yucchi_amizuRulerV2_marker_data';
   var note = document.createElement('div'); note.id = 'mk-note'; document.body.appendChild(note);
+  note.addEventListener('click', function () { note.style.display = 'none'; });   // タップで閉じる
   var noteTimer = null;
   function showNote(msg, ms) { note.textContent = msg; note.style.display = 'block'; clearTimeout(noteTimer); noteTimer = setTimeout(function () { note.style.display = 'none'; }, ms || 5000); }
   function pack(s) {
@@ -11273,7 +11281,7 @@
   $('mk-m-ruler').addEventListener('click', function () { st.mode = 'ruler'; syncUI(); });
   $('mk-m-marker').addEventListener('click', function () { st.mode = 'marker'; syncUI(); });
   var toastTimer = null;
-  function toast(msg) { showNote(msg, 1500); }
+  function toast(msg) { showNote(msg, Math.min(7000, Math.max(3000, 1800 + msg.length * 140))); }   // 文字数に合わせて、読める長さだけ表示する
   $('mk-ruler-tg').addEventListener('click', function () { st.showRuler = !st.showRuler; saveSt(); syncUI(); toast('定規を表示：' + (st.showRuler ? 'ON' : 'OFF')); });
   $('mk-in-pen').addEventListener('click', function () { st.input = 'pen'; saveSt(); syncUI(); toast('ペンモード：ペンで塗る／指は編み図と定規の操作'); });
   $('mk-in-hand').addEventListener('click', function () { st.input = 'hand'; saveSt(); syncUI(); toast('指モード：指でもペンでも塗れます'); });
@@ -11369,14 +11377,14 @@
     if (L * scale < 60) return null;
     var a = p[0], b = p[n - 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]);
     // 直線：始点と終点を結ぶ線から、ほとんどずれていない
-    if (d * scale > 40 && L / d < 1.15) {
-      var dev = 0;
-      for (i = 1; i < n - 1; i++) {
+    if (d * scale > 40 && L / d < 1.35) {
+      var dev = 0, lo = Math.max(1, Math.floor(n * 0.08)), hi = n - lo;       // 始点・終点のあたりの「はね」は、判定に入れない
+      for (i = lo; i < hi; i++) {
         var t = ((p[i][0] - a[0]) * (b[0] - a[0]) + (p[i][1] - a[1]) * (b[1] - a[1])) / (d * d);
         var px = a[0] + t * (b[0] - a[0]), py = a[1] + t * (b[1] - a[1]);
         dev = Math.max(dev, Math.hypot(p[i][0] - px, p[i][1] - py));
       }
-      if (dev / d < 0.09) return { kind: 'line', pts: [a.slice(), axisFix(a, b)] };
+      if (dev / d < 0.16) return { kind: 'line', pts: [a.slice(), axisFix(a, b)] };    // ゆるいカーブの線も、まっすぐにする
     }
     // 閉じた形：始点と終点が近い
     var w = maxX - minX, h = maxY - minY;
@@ -11605,9 +11613,10 @@
     if (document.getElementById('mk-pen-notice')) return;
     if (busy()) { setTimeout(showPenNotice, 1000); return; }            // 計測などの最中は、終わるまで待つ
     var inMarker = st.mode === 'marker';
-    var body = inMarker
-      ? '操作盤の ✏️ を押すと「ペンモード」になります。ペンで塗って、指で編み図と定規を動かせます。'
-      : '上の「蛍光ペン」にすると、操作盤の中に ✏️「ペンモード」が出ます。ペンで塗って、指で編み図と定規を動かせます。';
+    var lead = inMarker ? '操作盤の下のボタンで、塗り方を選べます。' : '「蛍光ペン」にすると、塗り方を選べます。';
+    var body = '<div class="mk-pn-lead"><span>' + lead + '</span></div>' +
+      '<div class="mk-pn-row"><b>✏️ ペンモード</b><span>ペンで塗って、</span><span>指で編み図や定規を動かします。</span></div>' +
+      '<div class="mk-pn-row"><b>👆 指モード</b><span>指でもペンでも、</span><span>塗れます。</span></div>';
     var ov = document.createElement('div');
     ov.id = 'mk-pen-notice';
     ov.innerHTML = '<div class="mk-pn-card"><div class="mk-pn-title">ペンを検知しました ✏️</div><div class="mk-pn-body">' + body + '</div><button type="button" class="mk-pn-ok">OK</button></div>';
